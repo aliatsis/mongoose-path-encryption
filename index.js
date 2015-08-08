@@ -12,8 +12,6 @@ var DEFAULT_OPTIONS = {
 var INVALID_QUERY_CONDITIONALS = ['$gt', '$gte', '$lt', '$lte'];
 
 module.exports = function(schema, options) {
-    var explodedPaths = [];
-
     options = extend({}, DEFAULT_OPTIONS, options); // make copy to be safe
     options.paths = toStringArray(options.paths);
     options.excludedPaths = toStringArray(options.excludedPaths).concat([
@@ -23,7 +21,9 @@ module.exports = function(schema, options) {
         schema.options.discriminatorKey
     ]);
 
-    if (!options.secret) {
+    if (options.secret) {
+        options.secret = drop256(deriveKey(options.secret, 'enc'));
+    } else {
         throw new Error('Missing required secret key');
     }
 
@@ -35,10 +35,6 @@ module.exports = function(schema, options) {
         return !~options.excludedPaths.indexOf(p);
     });
 
-    explodedPaths = options.paths.map(function(p) {
-        return p.split('.');
-    });
-
     if (options.middleware) { // defaults to true
 
         options.paths.forEach(function(p) {
@@ -47,6 +43,8 @@ module.exports = function(schema, options) {
         });
 
         schema.pre('init', function(next, data) {
+            var self = this;
+
             try {
                 if (data) {
                     if (Array.isArray(data)) {
@@ -54,7 +52,11 @@ module.exports = function(schema, options) {
                         throw new Error('Received Array data in pre init hook');
                     }
 
-                    explodedPaths.forEach(function(ep) {
+                    options.paths.filter(function(p) {
+                        return self.isSelected(p);
+                    }).map(function(p) {
+                        return p.split('.');
+                    }).forEach(function(ep) {
                         var lastIndex = ep.length - 1;
                         var lastObjectRef;
 
@@ -83,13 +85,15 @@ module.exports = function(schema, options) {
             var self = this;
 
             options.paths.forEach(function(p) {
-                self.set(p, encryptValue(self.get(p)));
+                var origSetters = schema.paths[p].setters;
+                schema.paths[p].setters = [];
+                self.set(p, encryptValue(self.get(p), options), Buffer);
+                schema.paths[p].setters = origSetters;
             });
 
             next();
         });
     }
-
 
 
     // Encryption Instance Methods //
@@ -128,8 +132,8 @@ function encryptValue(value, options) {
     try {
         var iv = crypto.randomBytes(options.ivLength);
         var cipher = crypto.createCipheriv(options.encryptionAlgorithm, options.secret, iv);
-        var jsonToEncrypt = JSON.stringify(value);
-        var encrypted = cipher.update(jsonToEncrypt, 'utf8') + cipher.final();
+        var jsonBuffer = new Buffer(JSON.stringify(value));
+        var encrypted = Buffer.concat([cipher.update(jsonBuffer), cipher.final()]);
 
         // return Buffer.concat([options.version, iv, encrypted]);
         return Buffer.concat([iv, encrypted]);
@@ -141,9 +145,11 @@ function encryptValue(value, options) {
 function decryptValue(encrypted, options) {
     var iv, encryptedContent, decipher, decrypted, decryptedJSON;
 
-    if (!hasValue(encrypted)) {
+    if (!encrypted) {
         return encrypted;
     }
+
+    encrypted = encrypted.buffer;
 
     try {
         // iv = encrypted.slice(options.version.length, options.version.length + options.ivLength);
@@ -151,7 +157,7 @@ function decryptValue(encrypted, options) {
         iv = encrypted.slice(0, options.ivLength);
         encryptedContent = encrypted.slice(options.ivLength);
         decipher = crypto.createDecipheriv(options.encryptionAlgorithm, options.secret, iv);
-        decrypted = decipher.update(encryptedContent, 'hex', 'utf8') + decipher.final('utf8');
+        decrypted = decipher.update(encryptedContent, undefined, 'utf8') + decipher.final('utf8');
     } catch (e) {
         throw new Error('Error while decrypting value. ' + e.name + ': ' + e.message);
     }
@@ -174,7 +180,7 @@ function isTrueObject(val) {
 }
 
 function toStringArray(val) {
-    var result = Array.isArray() ? val : val && [val] || [];
+    var result = Array.isArray(val) ? val : val && [val] || [];
 
     result.forEach(function(s) {
         if (typeof s !== 'string') {
@@ -184,3 +190,22 @@ function toStringArray(val) {
 
     return result;
 }
+
+var deriveKey = function(master, type) {
+    var hmac = crypto.createHmac('sha512', master);
+    hmac.update(type);
+    return new Buffer(hmac.digest());
+};
+
+var clearBuffer = function(buf) {
+    for (var i = 0; i < buf.length; i++) {
+        buf[i] = 0;
+    }
+};
+
+var drop256 = function(buf) {
+    var buf256 = new Buffer(32);
+    buf.copy(buf256, 0, 0, 32);
+    clearBuffer(buf);
+    return buf256;
+};
