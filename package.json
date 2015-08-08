@@ -1,31 +1,31 @@
 {
-    "name": "mongoose-path-encryption",
-    "version": "0.0.0",
-    "description": "",
-    "main": "index.js",
-    "scripts": {},
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/aliatsis/mongoose-path-encryption.git"
-    },
-    "keywords": [
-        "mongoose",
-        "encryption",
-        "encrypted",
-        "encrypt",
-        "path",
-        "rest"
-    ],
-    "author": "Anthony Liatsis <anthony.liatsis@gmail.com>",
-    "bugs": {
-        "url": "https://github.com/aliatsis/mongoose-path-encryption/issues"
-    },
-    "homepage": "https://github.com/aliatsis/mongoose-path-encryption#readme",
-    "dependencies": {
-        "extend": "~3.0.0"
-    },
-    "devDependencies": {
-        "eslint": "~1.1.0",
-        "eslint-plugin-jasmine": "~1.3.0"
-    }
+  "name": "mongoose-path-encryption",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aliatsis/mongoose-path-encryption.git"
+  },
+  "keywords": [
+    "mongoose",
+    "encryption",
+    "encrypted",
+    "encrypt",
+    "path",
+    "rest"
+  ],
+  "author": "Anthony Liatsis <anthony.liatsis@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/aliatsis/mongoose-path-encryption/issues"
+  },
+  "homepage": "https://github.com/aliatsis/mongoose-path-encryption#readme",
+  "dependencies": {
+    "extend": "~3.0.0"
+  },
+  "devDependencies": {
+    "eslint": "~1.1.0",
+    "eslint-plugin-jasmine": "~1.3.0"
+  }
 }
